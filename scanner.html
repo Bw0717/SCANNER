@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <script src="https://unpkg.com/@zxing/library@latest"></script>
+    <style>
+        video { width: 100%; height: auto; }
+        canvas { display: none; }
+        #result { margin-top: 20px; font-size: 18px; }
+        #msgBox {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 30px;
+            background-color: white;
+            border: 3px solid #007bff;
+            border-radius: 12px;
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.2);
+            display: none;
+            z-index: 1000;
+            width: 300px;
+            text-align: center;
+        }
+        #msgContent {
+            margin-bottom: 15px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        #copyButton {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
+
+
+    <div id="msgBox">
+        <div id="msgContent"></div>
+        <button id="copyButton">Click to Copy</button>
+    </div>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        const resultDiv = document.getElementById('result');
+        const msgBox = document.getElementById('msgBox');
+        const msgContent = document.getElementById('msgContent');
+        const copyButton = document.getElementById('copyButton');
+        let scannedText = '';
+        let codeReader;
+
+        async function startScanner() {
+            codeReader = new ZXing.BrowserMultiFormatReader();
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                video.srcObject = stream;
+                video.setAttribute('playsinline', true);
+
+                codeReader.decodeFromVideoDevice(null, 'video', (result, err) => {
+                    if (result) {
+                        scannedText = result.text;
+                        resultDiv.textContent = `Scan Result: ${scannedText}`;
+                        msgContent.textContent = `Scanned: ${scannedText}`;
+                        msgBox.style.display = 'block';
+                        codeReader.reset(); // 暫停掃描
+                    }
+                    if (err && !(err instanceof ZXing.NotFoundException)) {
+                        console.error(err);
+                    }
+                });
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+            }
+        }
+
+        copyButton.addEventListener('click', () => {
+            navigator.clipboard.writeText(scannedText).then(() => {
+                alert('Text copied to clipboard: ' + scannedText);
+                msgBox.style.display = 'none'; // 關閉彈窗
+                startScanner(); // 重新開始掃描
+            }).catch(() => {
+                alert('Unable to copy automatically. Please select and copy manually.');
+            });
+        });
+
+        startScanner();
+    </script>
+</body>
+</html>
